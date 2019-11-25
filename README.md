@@ -38,6 +38,15 @@ cd dcoh
 python main.py
 ```
 
+#### How to deceive
+Create the contents you want to deceive.
+
+`dcoh/contents/{domain}/{url}`
+
+For example
+
+`dcoh/contents/www.google.com/index.html`
+
 ## After this
 * Support HTTP protocol
 * Support custom contents with Python script.
