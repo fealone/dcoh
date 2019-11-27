@@ -18,7 +18,7 @@ METHODS = ["GET",
            "TRACE",
            "PATCH"]
 
-logger = logging.getLogger("proxy")
+logger = logging.getLogger("http_proxy")
 
 
 class Proxy(object):

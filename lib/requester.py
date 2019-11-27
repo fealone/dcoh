@@ -1,9 +1,13 @@
+import logging
 import os
 import shutil
+from importlib import machinery
 
 from lib import payload, rwsocket
 
 import requests
+
+logger = logging.getLogger("requester")
 
 
 class Requester(object):
@@ -68,11 +72,39 @@ class Requester(object):
         return res
 
     def response(self, client, res, host, headers):
+        host = host[0]
         rw_client = rwsocket.RWSocket(client)
         suffix = ""
         if headers["url"].endswith("/"):
-            suffix = "index.html"
-        if os.path.exists(f"contents/{host}{headers['url']}{suffix}"):
+            suffix = "/index.html"
+            headers["url"] = headers["url"].rstrip("/")
+        filename = "/" + headers['url'].split(".")[0]
+        if os.path.exists(f"contents/{host}{filename}.py"):
+            try:
+                loader = machinery.SourceFileLoader(
+                        filename,
+                        f"contents/{host}{filename}.py")
+                module = loader.load_module()
+                if "Content-Encoding" in res.headers:
+                    del res.headers["Content-Encoding"]
+                res_obj = module.migrate(res)
+                res.headers["Content-Length"] = str(res_obj.size())
+            except Exception:
+                logger.warning("", exc_info=True)
+                res_obj = res.raw
+            set_cookies = ""
+            if "Set-Cookie" in res.headers:
+                for cookie in res.headers["Set-Cookie"].split(", "):
+                    set_cookies += f"Set-Cookie: {cookie}\r\n"
+                del res.headers["Set-Cookie"]
+            res_header = '\r\n'.join('{}: {}'.format(
+                k, v) for k, v in res.headers.items())
+            res_headers = (f"HTTP/1.1 {res.status_code}\r\n"
+                           f"{res_header}\r\n"
+                           f"{set_cookies}\r\n")
+            rw_client.send(res_headers.encode("utf-8"))
+            shutil.copyfileobj(res_obj, rw_client)
+        elif os.path.exists(f"contents/{host}{headers['url']}{suffix}"):
             if "Content-Encoding" in res.headers:
                 del res.headers["Content-Encoding"]
             content_size = os.path.getsize(
