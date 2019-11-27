@@ -1,10 +1,8 @@
 import logging
 import socket
-import ssl
 import threading
 
 from lib import (
-        certs,
         recvline,
         requester,
         websocket)
@@ -32,7 +30,7 @@ class Proxy(object):
         self.root_server.listen(1024)
         self.connections = {}
         self.lock = threading.Lock()
-        self.requester = requester.Requester()
+        self.requester = requester.Requester(secure=False)
 
     def receive_header(self, recvobj):
         header = {}
@@ -44,8 +42,14 @@ class Proxy(object):
         if req_method not in METHODS:
             raise Exception("Corrupted request")
         req_headers = raw.split(" ")
+        full_url = req_headers[1].split("//")[1]
+        url = "/" + "/".join(full_url.split("/")[1:])
+        target = full_url.split("/")[0]
+        if ":" not in target:
+            target = f"{target}:80"
         headers["method"] = req_headers[0]
-        headers["url"] = req_headers[1]
+        headers["url"] = url
+        headers["target"] = target
         headers["protocol"] = req_headers[2].rstrip()
         while 1:
             raw = recvobj.recvline().decode("utf-8")
@@ -58,10 +62,8 @@ class Proxy(object):
         headers["header"] = header
         return headers
 
-    def transfer(self, client, target):
+    def transfer(self, client):
         recvobj = recvline.Recvline(client)
-        target = target.decode("utf-8")
-        host, port = target.split(":")
         while 1:
             try:
                 headers = self.receive_header(recvobj)
@@ -69,6 +71,7 @@ class Proxy(object):
                 break
             if headers is None:
                 break
+            target = headers["target"]
             if "upgrade" in headers["header"]:
                 if headers["header"]["upgrade"] == "websocket":
                     ws = websocket.WebSocket(secure=True)
@@ -76,52 +79,17 @@ class Proxy(object):
                     break
             try:
                 continued = self.requester.delegate(
-                        client, recvobj, target, headers, secure=True)
-            except Exception:
+                        client, recvobj, target, headers)
+            except Exception as e:
+                raise e
                 break
             if not continued:
                 break
         client.close()
 
     def worker(self, index, client):
-        raw = client.recv(1024)
-        header = raw.split(b"\r\n")[0]
-        if not header.startswith(b"CONNECT"):
-            client.close()
-            del self.connections[index]
-            return
-        target = header.split(b" ")[1]
-        host, port = target.split(b":")
-        host = host.decode("utf-8")
         try:
-            self.lock.acquire()
-            certs.create_cert(host)
-        except Exception:
-            pass
-        finally:
-            self.lock.release()
-        client.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-        try:
-            client = ssl.wrap_socket(
-                    client,
-                    keyfile="CA/demoCA/private/cakey.pem",
-                    certfile=f"CA/certs/{host}.crt",
-                    server_side=True)
-        except Exception:
-            try:
-                self.lock.acquire()
-                certs.refresh_cert(host)
-                client.close()
-                del self.connections[index]
-                logger.error(f"Failed to create the connection of SSL"
-                             f"to {target}")
-            except Exception:
-                pass
-            finally:
-                self.lock.release()
-            return
-        try:
-            self.transfer(client, target)
+            self.transfer(client)
         except Exception as e:
             raise e
         finally:
