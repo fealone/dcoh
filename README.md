@@ -2,12 +2,12 @@
 
 ## What is this
 
-This software is to deceive the communication of HTTPS.  
+This software is to deceive the communication of HTTP(S).  
 The reason for making is to debug API and hack API to do.  
 
 ## Getting Started
 
-This project was created to deceive the communication of HTTPS.  
+This project was created to deceive the communication of HTTP(S).  
 To use this project so see "Installing" and "Usage" section.  
 
 ### Prerequisites
@@ -48,7 +48,6 @@ For example
 `dcoh/contents/www.google.com/index.html`
 
 ## After this
-* Support HTTP protocol
 * Support custom contents with Python script.
 
 ## Authors
