@@ -8,11 +8,12 @@ import requests
 
 class Requester(object):
 
-    def __init__(self):
+    def __init__(self, secure=False):
         self.session = requests.Session()
+        self.secure = secure
 
-    def request(self, target, headers, recvobj, secure=False):
-        if secure:
+    def request(self, target, headers, recvobj):
+        if self.secure:
             protocol = "https"
         else:
             protocol = "http"
@@ -110,9 +111,8 @@ class Requester(object):
                  client,
                  recvobj,
                  target,
-                 headers,
-                 secure=False):
-        res = self.request(target, headers, recvobj, secure=True)
+                 headers):
+        res = self.request(target, headers, recvobj)
         if "Transfer-Encoding" in res.headers:
             del res.headers["Transfer-Encoding"]
         host = target.split(":")
