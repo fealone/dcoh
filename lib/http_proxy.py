@@ -23,7 +23,7 @@ logger = logging.getLogger("proxy")
 
 class Proxy(object):
 
-    def __init__(self, host="127.0.0.1", port=443):
+    def __init__(self, host="127.0.0.1", port=80):
         self.root_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.root_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_server.bind((host, port))
