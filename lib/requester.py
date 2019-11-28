@@ -42,6 +42,7 @@ class Requester(object):
                         )
             except Exception:
                 logger.warning(f"Cannot connect to {target}")
+                return
         else:
             try:
                 req = requests.Request(
@@ -58,6 +59,7 @@ class Requester(object):
                         )
             except Exception:
                 logger.warning(f"Cannot connect to {target}")
+                return
         return res
 
     def response(self, client, res, host, headers):
@@ -136,6 +138,8 @@ class Requester(object):
                  target,
                  headers):
         res = self.request(target, headers, recvobj)
+        if res is None:
+            return False
         if "Transfer-Encoding" in res.headers:
             del res.headers["Transfer-Encoding"]
         host = target.split(":")

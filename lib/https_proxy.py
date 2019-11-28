@@ -113,8 +113,8 @@ class Proxy(object):
                 certs.refresh_cert(host)
                 client.close()
                 del self.connections[index]
-                logger.error(f"Failed to create the connection of SSL"
-                             f"to {target}")
+                logger.error(f"Failed to create the connection of SSL "
+                             f"to {target.decode('utf-8')}")
             except Exception:
                 pass
             finally:
