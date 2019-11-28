@@ -76,10 +76,12 @@ class Requester(object):
                 module = loader.load_module()
                 if "Content-Encoding" in res.headers:
                     del res.headers["Content-Encoding"]
-                res_obj = module.migrate(res)
+                res_obj = module.ResponseObject(res)
                 res.headers["Content-Length"] = str(res_obj.size())
             except Exception:
-                logger.warning("", exc_info=True)
+                logger.warning((f"Occurred error in "
+                                f"[contents/{host}{filename}.py]"),
+                               exc_info=True)
                 res_obj = res.raw
             set_cookies = ""
             if "Set-Cookie" in res.headers:
