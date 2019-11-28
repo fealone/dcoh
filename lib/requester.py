@@ -22,53 +22,42 @@ class Requester(object):
         else:
             protocol = "http"
         host = target.split(":")[0]
-        err_count = 0
         if "content-length" in headers["header"]:
-            for i in range(3):
-                try:
-                    size = int(headers["header"]["content-length"])
-                    req = requests.Request(
-                            headers["method"],
-                            f"{protocol}://{host}{headers['url']}",
-                            headers=headers["header"],
-                            data=payload.PayloadIterator(
-                                recvobj,
-                                size))
-                    prepared = req.prepare()
-                    if "Transfer-Encoding" in prepared.headers:
-                        del prepared.headers["Transfer-Encoding"]
-                    res = self.session.send(
-                            prepared,
-                            stream=True,
-                            allow_redirects=False,
-                            )
-                    break
-                except Exception as e:
-                    err_count += 1
-                    err = e
-                if err_count == 3:
-                    raise err
+            try:
+                size = int(headers["header"]["content-length"])
+                req = requests.Request(
+                        headers["method"],
+                        f"{protocol}://{host}{headers['url']}",
+                        headers=headers["header"],
+                        data=payload.PayloadIterator(
+                            recvobj,
+                            size))
+                prepared = req.prepare()
+                if "Transfer-Encoding" in prepared.headers:
+                    del prepared.headers["Transfer-Encoding"]
+                res = self.session.send(
+                        prepared,
+                        stream=True,
+                        allow_redirects=False,
+                        )
+            except Exception:
+                logger.warning(f"Cannot connect to {target}")
         else:
-            for i in range(3):
-                try:
-                    req = requests.Request(
-                            headers["method"],
-                            f"{protocol}://{target}{headers['url']}",
-                            headers=headers["header"])
-                    prepared = req.prepare()
-                    if "content-length" in prepared.headers:
-                        del prepared.headers["content-length"]
-                    res = self.session.send(
-                            prepared,
-                            stream=True,
-                            allow_redirects=False,
-                            )
-                    break
-                except Exception as e:
-                    err_count += 1
-                    err = e
-                if err_count == 3:
-                    raise err
+            try:
+                req = requests.Request(
+                        headers["method"],
+                        f"{protocol}://{target}{headers['url']}",
+                        headers=headers["header"])
+                prepared = req.prepare()
+                if "content-length" in prepared.headers:
+                    del prepared.headers["content-length"]
+                res = self.session.send(
+                        prepared,
+                        stream=True,
+                        allow_redirects=False,
+                        )
+            except Exception:
+                logger.warning(f"Cannot connect to {target}")
         return res
 
     def response(self, client, res, host, headers):
