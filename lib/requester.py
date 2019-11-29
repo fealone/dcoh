@@ -76,10 +76,16 @@ class Requester(object):
                         filename,
                         f"contents/{host}{filename}.py")
                 module = loader.load_module()
-                if "Content-Encoding" in res.headers:
-                    del res.headers["Content-Encoding"]
                 res_obj = module.ResponseObject(res)
-                res.headers["Content-Length"] = str(res_obj.size())
+                content_size = res_obj.size()
+                if content_size:
+                    res.headers["Content-Length"] = str(content_size)
+                    if "Transfer-Encoding" in res.headers:
+                        del res.headers["Transfer-Encoding"]
+                else:
+                    res.headers["Transfer-Encoding"] = "chunked"
+                    if "Content-Length" in res.headers:
+                        del res.headers["Content-Length"]
             except Exception:
                 logger.warning((f"Occurred error in "
                                 f"[contents/{host}{filename}.py]"),
