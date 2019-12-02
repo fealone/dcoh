@@ -39,7 +39,8 @@ python main.py
 ```
 
 #### How to deceive
-Create the contents you want to deceive.
+Create the contents you want to deceive.  
+If a path has an end of a slash then, add "index.html" to the end.  
 
 `dcoh/contents/{domain}/{url}`
 
@@ -47,8 +48,16 @@ For example
 
 `dcoh/contents/www.google.com/index.html`
 
-## After this
-* Support custom contents with Python script.
+#### How to use custom script
+Create the Python script you want to change response.  
+The path to deploy is to add extension ".py" to the contents path.  
+Also, different from the content is if a path has an end of a slash then, it doesn't add "index.html" to the end.  
+
+For example  
+
+`dcoh/contents/www.google.com/.py`
+
+Also, a script has priority over content.  
 
 ## Authors
 
