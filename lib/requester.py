@@ -70,7 +70,7 @@ class Requester(object):
         if headers["url"].endswith("/"):
             suffix = "/index.html"
             headers["url"] = headers["url"].rstrip("/")
-        filename = "/" + headers['url'].split(".")[0]
+        filename = headers['url'].split(".")[0]
         if os.path.exists(f"contents/{host}{filename}.py"):
             logger.info(f"Selected script with [contents/{host}{filename}.py]")
             try:
