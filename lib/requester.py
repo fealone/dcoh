@@ -7,6 +7,7 @@ from lib import payload, rwsocket
 
 import requests
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("requester")
 
 
@@ -71,6 +72,7 @@ class Requester(object):
             headers["url"] = headers["url"].rstrip("/")
         filename = "/" + headers['url'].split(".")[0]
         if os.path.exists(f"contents/{host}{filename}.py"):
+            logger.info(f"Selected script with [contents/{host}{filename}.py]")
             try:
                 loader = machinery.SourceFileLoader(
                         filename,
@@ -104,6 +106,8 @@ class Requester(object):
             rw_client.send(res_headers.encode("utf-8"))
             shutil.copyfileobj(res_obj, rw_client)
         elif os.path.exists(f"contents/{host}{headers['url']}{suffix}"):
+            logger.info((f"Selected content with "
+                         f"[contents/{host}{headers['url']}{suffix}]"))
             if "Content-Encoding" in res.headers:
                 del res.headers["Content-Encoding"]
             content_size = os.path.getsize(
@@ -149,7 +153,11 @@ class Requester(object):
         if "Transfer-Encoding" in res.headers:
             del res.headers["Transfer-Encoding"]
         host = target.split(":")
-        self.response(client, res, host, headers)
+        try:
+            self.response(client, res, host, headers)
+        except Exception:
+            logger.warning(f"Cannot response error. {target}")
+            return False
         if res.headers.get("Connection") == "close":
             return False
         return True
