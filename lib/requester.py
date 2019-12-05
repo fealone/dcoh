@@ -80,6 +80,8 @@ class Requester(object):
                 module = loader.load_module()
                 res_obj = module.ResponseObject(res)
                 content_size = res_obj.size()
+                res.headers = res_obj.headers
+                res.status_code = res_obj.status_code
                 if content_size:
                     res.headers["Content-Length"] = str(content_size)
                     if "Transfer-Encoding" in res.headers:

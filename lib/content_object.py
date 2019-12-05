@@ -13,6 +13,16 @@ class ContentObject(object):
     def size(self):
         raise NotImplementedError()
 
+    # Override this property if you need to change the headers.
+    @property
+    def headers(self):
+        return self.res.headers
+
+    # Override this property if you need to change the status code.
+    @property
+    def status_code(self):
+        return self.res.status_code
+
     def stream(self):
         yield b""
 
