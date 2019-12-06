@@ -26,6 +26,7 @@ class ContentObject(object):
         yield b""
 
     def read(self, size=None):
+        content_size = self.size()
         while 1:
             try:
                 if len(self.buf) < size:
@@ -38,17 +39,23 @@ class ContentObject(object):
                     chunk = self.buf[:size]
                     del self.buf[:size]
                     self.pos += size
-                    size = hex(len(bytes(chunk))
-                            ).split("0x")[1].upper().encode("utf-8")
-                    return size + b"\r\n" + bytes(chunk) + b"\r\n"
+                    size = hex(len(bytes(chunk))).split(
+                            "0x")[1].upper().encode("utf-8")
+                    if content_size is None:
+                        return size + b"\r\n" + bytes(chunk) + b"\r\n"
+                    else:
+                        return chunk
                 continue
         if self.buf:
             self.pos += len(self.buf)
             chunk = self.buf[:]
             del self.buf[:]
-            size = hex(len(bytes(chunk))
-                    ).split("0x")[1].upper().encode("utf-8")
-            return size + b"\r\n" + bytes(chunk) + b"\r\n"
+            size = hex(len(bytes(chunk))).split(
+                    "0x")[1].upper().encode("utf-8")
+            if content_size is None:
+                return size + b"\r\n" + bytes(chunk) + b"\r\n"
+            else:
+                return chunk
         elif self.finished:
             return None
         else:
