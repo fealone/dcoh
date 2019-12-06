@@ -9,7 +9,7 @@ class ContentObject(object):
         self.writable = False
         self.finished = False
 
-    # Override this property if you need to set the content size.
+    # Override this method if you need to set the content size.
     def size(self):
         return None
 
