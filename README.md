@@ -55,7 +55,42 @@ Also, different from the content is if a path has an end of a slash then, it doe
 
 For example  
 
+* Path
+
 `dcoh/contents/www.google.com/.py`
+
+* Script
+
+```python
+from lib import content_object
+
+
+class ResponseObject(content_object.ContentObject):
+
+    # Can use this property if you need to change any headers.
+    # This property is optional.
+    @property
+    def headers(self):
+        return self.res.headers
+
+    # Can use this property if you need to change the status code.
+    # This property is optional.
+    @property
+    def status_code(self):
+        return self.res.status_code
+
+    # Can use this method if you explicitly specify content size.
+    # This property is optional.
+    def size(self):
+        # If return content size then selected "Content-Length".
+        return self.res.headers["Content-Length"]
+        # If return None then selected "Transfer-Encoding: chunked".
+        return None
+
+    def stream(self):
+        for line in self.res.raw:
+            yield line
+```
 
 Also, a script has priority over content.  
 
