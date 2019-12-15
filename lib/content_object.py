@@ -1,7 +1,10 @@
 class ContentObject(object):
+    need_request_payload = False
 
-    def __init__(self, res, *args, **kwargs):
+    def __init__(self, res, request_headers, request_payload):
         self.res = res
+        self.request_headers = request_headers
+        self.request_payload = request_payload
         self.buf = bytearray()
         self.pos = 0
         self.stream_reader = self.stream()

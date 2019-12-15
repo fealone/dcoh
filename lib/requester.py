@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import io
 from importlib import machinery
 
 from lib import payload, rwsocket
@@ -23,16 +24,25 @@ class Requester(object):
         else:
             protocol = "http"
         host = target.split(":")[0]
+        filename = headers['url'].split(".")[0]
+        request_payload = None
         if "content-length" in headers["header"]:
             try:
                 size = int(headers["header"]["content-length"])
+                recvobj = payload.PayloadIterator(recvobj, size)
+                if os.path.exists(f"contents/{host}{filename}.py"):
+                    loader = machinery.SourceFileLoader(
+                            filename,
+                            f"contents/{host}{filename}.py")
+                    module = loader.load_module()
+                    if module.ResponseObject.need_request_payload:
+                        request_payload = b"".join(list(recvobj))
+                        recvobj = io.BytesIO(request_payload)
                 req = requests.Request(
                         headers["method"],
                         f"{protocol}://{host}{headers['url']}",
                         headers=headers["header"],
-                        data=payload.PayloadIterator(
-                            recvobj,
-                            size))
+                        data=recvobj)
                 prepared = req.prepare()
                 if "Transfer-Encoding" in prepared.headers:
                     del prepared.headers["Transfer-Encoding"]
@@ -43,7 +53,7 @@ class Requester(object):
                         )
             except Exception:
                 logger.warning(f"Cannot connect to {target}")
-                return
+                return None, None
         else:
             try:
                 req = requests.Request(
@@ -60,10 +70,10 @@ class Requester(object):
                         )
             except Exception:
                 logger.warning(f"Cannot connect to {target}")
-                return
-        return res
+                return None, None
+        return res, request_payload
 
-    def response(self, client, res, host, headers):
+    def response(self, client, res, host, headers, request_payload):
         host = host[0]
         rw_client = rwsocket.RWSocket(client)
         suffix = ""
@@ -78,7 +88,10 @@ class Requester(object):
                         filename,
                         f"contents/{host}{filename}.py")
                 module = loader.load_module()
-                res_obj = module.ResponseObject(res)
+                res_obj = module.ResponseObject(
+                        res,
+                        headers["header"],
+                        request_payload)
                 content_size = res_obj.size()
                 res.headers = res_obj.headers
                 res.status_code = res_obj.status_code
@@ -149,14 +162,14 @@ class Requester(object):
                  recvobj,
                  target,
                  headers):
-        res = self.request(target, headers, recvobj)
+        res, request_payload = self.request(target, headers, recvobj)
         if res is None:
             return False
         if "Transfer-Encoding" in res.headers:
             del res.headers["Transfer-Encoding"]
         host = target.split(":")
         try:
-            self.response(client, res, host, headers)
+            self.response(client, res, host, headers, request_payload)
         except Exception:
             logger.warning(f"Cannot response error. {target}")
             return False
