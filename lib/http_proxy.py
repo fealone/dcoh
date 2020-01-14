@@ -90,8 +90,6 @@ class Proxy(object):
     def worker(self, index, client):
         try:
             self.transfer(client)
-        except Exception as e:
-            raise e
         finally:
             del self.connections[index]
 

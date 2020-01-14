@@ -97,7 +97,7 @@ class Proxy(object):
             self.lock.acquire()
             certs.create_cert(host)
         except Exception:
-            pass
+            logger.error(f"Failed to create the certificate. [{host}]")
         finally:
             self.lock.release()
         client.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
@@ -109,21 +109,19 @@ class Proxy(object):
                     server_side=True)
         except Exception:
             try:
+                logger.error(f"Failed to create the connection of SSL "
+                             f"to {target.decode('utf-8')}")
                 self.lock.acquire()
                 certs.refresh_cert(host)
                 client.close()
                 del self.connections[index]
-                logger.error(f"Failed to create the connection of SSL "
-                             f"to {target.decode('utf-8')}")
             except Exception:
-                pass
+                logger.error(f"Failed to refresh the certificate. [{host}]")
             finally:
                 self.lock.release()
             return
         try:
             self.transfer(client, target)
-        except Exception as e:
-            raise e
         finally:
             del self.connections[index]
 
