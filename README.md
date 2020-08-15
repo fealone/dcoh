@@ -30,6 +30,18 @@ cd CA
 ./init.sh # Setup the CA root
 ```
 
+Default DN is this.
+
+```
+C = "JP"
+ST = "Tokyo"
+L = "Minato-ku"
+O = "dcoh"
+OU = "dcoh"
+```
+
+If you need to change DN then change settings.py.
+
 ### Usage 
 To using try to enter the bellow command line.  
 
@@ -93,6 +105,20 @@ class ResponseObject(content_object.ContentObject):
 ```
 
 Also, a script has priority over content.  
+
+#### How to use proxy in Google Chrome
+
+If you use in Google Chrome then set options this.
+
+```
+--proxy-server="https=127.0.0.1:8443;http=127.0.0.1:8080"
+```
+
+You can divide a session if you use these options.
+
+```
+--user-data-dir="{UserConfigDirectory}"
+```
 
 ## Authors
 
