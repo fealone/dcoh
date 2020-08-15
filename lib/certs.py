@@ -1,11 +1,7 @@
 import os
 import subprocess
 
-DCOH_C = os.environ.get("DCOH_C", "JP")
-DCOH_ST = os.environ.get("DCOH_C", "Tokyo")
-DCOH_L = os.environ.get("DCOH_L", "Minato-ku")
-DCOH_O = os.environ.get("DCOH_O", "dcoh")
-DCOH_OU = os.environ.get("DCOH_OU", "dcoh")
+from settings import *
 
 
 def create_cert(domain):

@@ -1,0 +1,5 @@
+DCOH_C = "JP"
+DCOH_ST = "Tokyo"
+DCOH_L = "Minato-ku"
+DCOH_O = "dcoh"
+DCOH_OU = "dcoh"
