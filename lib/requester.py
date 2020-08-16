@@ -26,7 +26,7 @@ class Requester(object):
         else:
             protocol = "http"
         host = target.split(":")[0]
-        filename = headers['url'].split(".")[0]
+        filename = headers['url'].split("?")[0].split("#")[0].split(".")[0]
         request_payload = None
         if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
             try:
@@ -74,7 +74,7 @@ class Requester(object):
         suffix = ""
         if headers["url"].endswith("/"):
             suffix = "index.html"
-        filename = headers['url'].split(".")[0]
+        filename = headers['url'].split("?")[0].split("#")[0].split(".")[0]
         if os.path.exists(f"contents/{host}{filename}.py"):
             logger.info(f"Selected script with [contents/{host}{filename}.py]")
             try:
