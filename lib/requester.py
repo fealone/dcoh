@@ -73,8 +73,7 @@ class Requester(object):
         rw_client = rwsocket.RWSocket(client)
         suffix = ""
         if headers["url"].endswith("/"):
-            suffix = "/index.html"
-            headers["url"] = headers["url"].rstrip("/")
+            suffix = "index.html"
         filename = headers['url'].split(".")[0]
         if os.path.exists(f"contents/{host}{filename}.py"):
             logger.info(f"Selected script with [contents/{host}{filename}.py]")
