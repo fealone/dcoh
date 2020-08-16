@@ -1,17 +1,15 @@
 import os
 import subprocess
 
-from settings import *
+import settings
 
 
-def create_cert(domain):
+def create_cert(domain: str) -> None:
     cmd = f"echo subjectAltName = DNS:{domain} > CA/exts/{domain}.ext"
     subprocess.run(cmd, shell=True, check=True)
-    if (os.path.exists(f"CA/certs/{domain}.crt") and
-            os.path.getsize(f"CA/certs/{domain}.crt") != 0):
+    if (os.path.exists(f"CA/certs/{domain}.crt") and os.path.getsize(f"CA/certs/{domain}.crt") != 0):
         return
-    elif (os.path.exists(f"CA/certs/{domain}.crt") and
-            os.path.getsize(f"CA/certs/{domain}.crt") == 0):
+    elif (os.path.exists(f"CA/certs/{domain}.crt") and os.path.getsize(f"CA/certs/{domain}.crt") == 0):
         os.remove(f"CA/certs/{domain}.crt")
         number = None
         f = open("CA/demoCA/index.txt", "r")
@@ -29,8 +27,8 @@ def create_cert(domain):
                 pass
     err_count = 0
     csr_cmd = (f"openssl req -new -key CA/demoCA/private/cakey.pem "
-               f"-out CA/csreq/{domain}.csr -subj \"/C={DCOH_C}/"
-               f"ST={DCOH_ST}/L={DCOH_L}/O={DCOH_O}/OU={DCOH_OU}"
+               f"-out CA/csreq/{domain}.csr -subj \"/C={settings.DCOH_C}/"
+               f"ST={settings.DCOH_ST}/L={settings.DCOH_L}/O={settings.DCOH_O}/OU={settings.DCOH_OU}"
                f"/CN={domain}\" > /dev/null 2>&1")
     crt_cmd = (f"cd CA && openssl ca -create_serial -days 3650 -keyfile "
                f"demoCA/private/cakey.pem -cert demoCA/cacert.pem "
@@ -48,7 +46,7 @@ def create_cert(domain):
         raise err
 
 
-def refresh_cert(domain):
+def refresh_cert(domain: str) -> None:
     os.remove(f"CA/certs/{domain}.crt")
     number = None
     f = open("CA/demoCA/index.txt", "r")

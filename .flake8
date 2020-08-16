@@ -1,0 +1,4 @@
+[flake8]
+ignore = E115, E122, E131, E252, E402
+max-line-length = 119
+import-order-style = google

@@ -2,13 +2,15 @@ import socket
 import ssl
 import threading
 
+from typing import Any, Dict
+
 
 class WebSocket(object):
 
-    def __init__(self, secure=False):
+    def __init__(self, secure: bool = False) -> None:
         self.secure = secure
 
-    def websocket_client(self, client, server):
+    def websocket_client(self, client: socket.socket, server: socket.socket) -> None:
         while 1:
             try:
                 raw = client.recv(1024)
@@ -21,7 +23,7 @@ class WebSocket(object):
         client.close()
         server.close()
 
-    def websocket_server(self, client, server):
+    def websocket_server(self, client: socket.socket, server: socket.socket) -> None:
         while 1:
             try:
                 raw = server.recv(1024)
@@ -34,7 +36,7 @@ class WebSocket(object):
         client.close()
         server.close()
 
-    def websocket(self, client, target, headers):
+    def websocket(self, client: socket.socket, target: str, headers: Dict[str, Any]) -> None:
         host, port = target.split(":")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
@@ -46,10 +48,8 @@ class WebSocket(object):
                                     in headers["header"].items()])
         send_header += "\r\n\r\n"
         sock.send(send_header.encode("utf-8"))
-        th_srv = threading.Thread(
-                target=self.websocket_server, args=(client, sock))
-        th_clt = threading.Thread(
-                target=self.websocket_client, args=(client, sock))
+        th_srv = threading.Thread(target=self.websocket_server, args=(client, sock))
+        th_clt = threading.Thread(target=self.websocket_client, args=(client, sock))
         th_srv.setDaemon(True)
         th_clt.setDaemon(True)
         th_srv.start()

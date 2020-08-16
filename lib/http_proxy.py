@@ -1,11 +1,9 @@
 import logging
 import socket
 import threading
+from typing import Any, Dict
 
-from lib import (
-        recvline,
-        requester,
-        websocket)
+from lib import requester, recvline, websocket
 
 
 METHODS = ["GET",
@@ -23,16 +21,16 @@ logger = logging.getLogger("http_proxy")
 
 class Proxy(object):
 
-    def __init__(self, host="127.0.0.1", port=80):
+    def __init__(self, host: str = "127.0.0.1", port: int = 80):
         self.root_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.root_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_server.bind((host, port))
         self.root_server.listen(1024)
-        self.connections = {}
+        self.connections: Dict[int, threading.Thread] = {}
         self.lock = threading.Lock()
         self.requester = requester.Requester(secure=False)
 
-    def receive_header(self, recvobj):
+    def receive_header(self, recvobj: recvline.Recvline) -> Dict[str, Any]:
         header = {}
         raw = recvobj.recvline().decode("utf-8")
         if not raw:
@@ -62,7 +60,7 @@ class Proxy(object):
         headers["header"] = header
         return headers
 
-    def transfer(self, client):
+    def transfer(self, client: socket.socket) -> None:
         recvobj = recvline.Recvline(client)
         while 1:
             try:
@@ -78,8 +76,7 @@ class Proxy(object):
                     ws.websocket(client, target, headers)
                     break
             try:
-                continued = self.requester.delegate(
-                        client, recvobj, target, headers)
+                continued = self.requester.delegate(client, recvobj, target, headers)
             except Exception as e:
                 raise e
                 break
@@ -87,13 +84,13 @@ class Proxy(object):
                 break
         client.close()
 
-    def worker(self, index, client):
+    def worker(self, index: int, client: socket.socket) -> None:
         try:
             self.transfer(client)
         finally:
             del self.connections[index]
 
-    def run(self):
+    def run(self) -> None:
         index = 0
         while 1:
             client, addr = self.root_server.accept()

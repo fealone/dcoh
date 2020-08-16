@@ -3,11 +3,9 @@ import socket
 import ssl
 import threading
 
-from lib import (
-        certs,
-        recvline,
-        requester,
-        websocket)
+from typing import Any, Dict
+
+from lib import certs, recvline, requester, websocket
 
 
 METHODS = ["GET",
@@ -25,16 +23,16 @@ logger = logging.getLogger("https_proxy")
 
 class Proxy(object):
 
-    def __init__(self, host="127.0.0.1", port=443):
+    def __init__(self, host: str = "127.0.0.1", port: int = 443):
         self.root_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.root_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_server.bind((host, port))
         self.root_server.listen(1024)
-        self.connections = {}
+        self.connections: Dict[int, threading.Thread] = {}
         self.lock = threading.Lock()
         self.requester = requester.Requester(secure=True)
 
-    def receive_header(self, recvobj):
+    def receive_header(self, recvobj: recvline.Recvline) -> Dict[str, Any]:
         header = {}
         raw = recvobj.recvline().decode("utf-8")
         if not raw:
@@ -58,9 +56,8 @@ class Proxy(object):
         headers["header"] = header
         return headers
 
-    def transfer(self, client, target):
+    def transfer(self, client: socket.socket, target: str) -> None:
         recvobj = recvline.Recvline(client)
-        target = target.decode("utf-8")
         host, port = target.split(":")
         while 1:
             try:
@@ -75,15 +72,14 @@ class Proxy(object):
                     ws.websocket(client, target, headers)
                     break
             try:
-                continued = self.requester.delegate(
-                        client, recvobj, target, headers)
+                continued = self.requester.delegate(client, recvobj, target, headers)
             except Exception:
                 break
             if not continued:
                 break
         client.close()
 
-    def worker(self, index, client):
+    def worker(self, index: int, client: socket.socket) -> None:
         raw = client.recv(1024)
         header = raw.split(b"\r\n")[0]
         if not header.startswith(b"CONNECT"):
@@ -91,8 +87,8 @@ class Proxy(object):
             del self.connections[index]
             return
         target = header.split(b" ")[1]
-        host, port = target.split(b":")
-        host = host.decode("utf-8")
+        host_b, port = target.split(b":")
+        host = host_b.decode("utf-8")
         try:
             self.lock.acquire()
             certs.create_cert(host)
@@ -102,11 +98,10 @@ class Proxy(object):
             self.lock.release()
         client.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
         try:
-            client = ssl.wrap_socket(
-                    client,
-                    keyfile="CA/demoCA/private/cakey.pem",
-                    certfile=f"CA/certs/{host}.crt",
-                    server_side=True)
+            client = ssl.wrap_socket(client,
+                                     keyfile="CA/demoCA/private/cakey.pem",
+                                     certfile=f"CA/certs/{host}.crt",
+                                     server_side=True)
         except Exception:
             try:
                 logger.error(f"Failed to create the connection of SSL "
@@ -121,11 +116,11 @@ class Proxy(object):
                 self.lock.release()
             return
         try:
-            self.transfer(client, target)
+            self.transfer(client, target.decode("utf-8"))
         finally:
             del self.connections[index]
 
-    def run(self):
+    def run(self) -> None:
         index = 0
         while 1:
             client, addr = self.root_server.accept()
