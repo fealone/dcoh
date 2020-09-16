@@ -1,13 +1,12 @@
+from importlib import machinery
+import io
 import logging
 import os
 import shutil
 import socket
-import io
-from importlib import machinery
 from typing import Any, Dict, List, Tuple
 
-from lib import payload, rwsocket, recvline
-
+from lib import payload, recvline, rwsocket
 import requests
 
 logging.basicConfig(level=logging.INFO)
@@ -25,19 +24,50 @@ class Requester(object):
             protocol = "https"
         else:
             protocol = "http"
+        delegator = None
         host = target.split(":")[0]
         filename = headers['url'].split("?")[0].split("#")[0].split(".")[0]
-        request_payload = None
-        if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
-            try:
+        if os.path.exists(f"contents/{host}{filename}.py"):
+            logger.info(f"Selected script with [contents/{host}{filename}.py]")
+            loader = machinery.SourceFileLoader(filename, f"contents/{host}{filename}.py")
+            module = loader.load_module(filename)
+            delegator = module.Delegate()  # type: ignore
+            if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
                 size = int(headers["header"]["content-length"])
                 recvobj = payload.PayloadIterator(recvobj, size)
-                if os.path.exists(f"contents/{host}{filename}.py"):
-                    loader = machinery.SourceFileLoader(filename, f"contents/{host}{filename}.py")
-                    module = loader.load_module(filename)
-                    if module.ResponseObject.need_request_payload:  # type: ignore
-                        request_payload = b"".join(list(recvobj))
-                        recvobj = io.BytesIO(request_payload)
+                if delegator.need_request_payload:
+                    request_payload = b"".join(list(recvobj))
+                    recvobj = io.BytesIO(request_payload)
+                    delegator.set_request_payload(request_payload)
+            delegator.set_headers(headers)
+            delegator.set_target(target)
+            delegator.set_protocol(protocol)
+            try:
+                req = delegator.get_request()
+                prepared = req.prepare()
+            except Exception:
+                if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
+                    req = requests.Request(headers["method"],
+                                           f"{protocol}://{target}{headers['url']}",
+                                           headers=headers["header"],
+                                           data=recvobj)
+                    prepared = req.prepare()
+                    if "Transfer-Encoding" in prepared.headers:
+                        del prepared.headers["Transfer-Encoding"]
+                else:
+                    req = requests.Request(headers["method"],
+                                           f"{protocol}://{target}{headers['url']}",
+                                           headers=headers["header"])
+                    prepared = req.prepare()
+                    if "content-length" in prepared.headers:
+                        del prepared.headers["content-length"]
+            try:
+                res = self.session.send(prepared, stream=True, allow_redirects=False)
+            except Exception:
+                logger.warning(f"Cannot connect to {target}")
+                return None, None
+        else:
+            if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
                 req = requests.Request(headers["method"],
                                        f"{protocol}://{target}{headers['url']}",
                                        headers=headers["header"],
@@ -46,11 +76,7 @@ class Requester(object):
                 if "Transfer-Encoding" in prepared.headers:
                     del prepared.headers["Transfer-Encoding"]
                 res = self.session.send(prepared, stream=True, allow_redirects=False)
-            except Exception:
-                logger.warning(f"Cannot connect to {target}")
-                return None, None
-        else:
-            try:
+            else:
                 req = requests.Request(headers["method"],
                                        f"{protocol}://{target}{headers['url']}",
                                        headers=headers["header"])
@@ -58,29 +84,23 @@ class Requester(object):
                 if "content-length" in prepared.headers:
                     del prepared.headers["content-length"]
                 res = self.session.send(prepared, stream=True, allow_redirects=False)
-            except Exception:
-                logger.warning(f"Cannot connect to {target}")
-                return None, None
-        return res, request_payload
+        return res, delegator
 
     def response(self,
                  client: socket.socket,
                  res: requests.Response,
                  source: List[str],
                  headers: Dict[str, Any],
-                 request_payload: bytes) -> None:
+                 delegator: Any) -> None:
         host = source[0]
         rw_client = rwsocket.RWSocket(client)
         suffix = ""
         if headers["url"].endswith("/"):
             suffix = "index.html"
         filename = headers['url'].split("?")[0].split("#")[0].split(".")[0]
-        if os.path.exists(f"contents/{host}{filename}.py"):
-            logger.info(f"Selected script with [contents/{host}{filename}.py]")
+        if delegator:
             try:
-                loader = machinery.SourceFileLoader(filename, f"contents/{host}{filename}.py")
-                module = loader.load_module(filename)
-                res_obj = module.ResponseObject(res, headers["header"], request_payload)  # type: ignore
+                res_obj = delegator.get_response(res)
                 content_size = res_obj.size()
                 res.headers = res_obj.headers
                 res.status_code = res_obj.status_code
@@ -92,6 +112,8 @@ class Requester(object):
                     res.headers["Transfer-Encoding"] = "chunked"
                     if "Content-Length" in res.headers:
                         del res.headers["Content-Length"]
+            except AttributeError:
+                res_obj = res.raw
             except Exception:
                 logger.warning((f"Occurred error in "
                                 f"[contents/{host}{filename}.py]"),
@@ -150,14 +172,14 @@ class Requester(object):
                  recvobj: recvline.Recvline,
                  target: str,
                  headers: Dict[str, Any]) -> bool:
-        res, request_payload = self.request(target, headers, recvobj)
+        res, delegator = self.request(target, headers, recvobj)
         if res is None:
             return False
         if "Transfer-Encoding" in res.headers:
             del res.headers["Transfer-Encoding"]
         host = target.split(":")
         try:
-            self.response(client, res, host, headers, request_payload)
+            self.response(client, res, host, headers, delegator)
         except Exception:
             logger.warning(f"Cannot response error. {target}")
             return False
