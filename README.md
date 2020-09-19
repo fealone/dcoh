@@ -61,7 +61,7 @@ For example
 `dcoh/contents/www.google.com/index.html`
 
 #### How to use custom script
-Create the Python script you want to change response.  
+Create the Python script you want to change response and request.  
 The path to deploy is to add extension ".py" to the contents path.  
 Also, different from the content is if a path has an end of a slash then, it doesn't add "index.html" to the end.  
 
@@ -74,32 +74,58 @@ For example
 * Script
 
 ```python
-from lib import content_object
+from typing import Any, Dict, Generator
+
+from lib.content_object import ContentObject
+from lib.delegate_object import DelegateObject
+import requests
 
 
-class ResponseObject(content_object.ContentObject):
+class Delegate(DelegateObject):
+
+    # Can change requests if you need to deceive to request.
+    # This method is optional.
+    def get_request(self) -> requests.Request:
+        if self.request_payload:
+            req = requests.Request(self.headers["method"],
+                                   f"{self.protocol}://{self.target}{self.headers['url']}",
+                                   headers=self.header,
+                                   data=self.request_payload)
+        else:
+            req = requests.Request(self.headers["method"],
+                                   f"{self.protocol}://{self.target}{self.headers['url']}",
+                                   headers=self.header)
+        return req
+
+    # Can change responses if you need to deceive to a response.
+    # This method is optional.
+    def get_response(self, response: requests.Response) -> "ResponseObject":
+        return ResponseObject(response, self.header)
+
+
+class ResponseObject(ContentObject):
 
     # Can use this property if you need to change any headers.
     # This property is optional.
     @property
-    def headers(self):
+    def headers(self) -> Dict[str, Any]:
         return self.res.headers
 
     # Can use this property if you need to change the status code.
     # This property is optional.
     @property
-    def status_code(self):
+    def status_code(self) -> int:
         return self.res.status_code
 
     # Can use this method if you explicitly specify content size.
     # This property is optional.
-    def size(self):
+    def size(self) -> int:
         # If return content size then selected "Content-Length".
         return self.res.headers["Content-Length"]
         # If return None then selected "Transfer-Encoding: chunked".
         return None
 
-    def stream(self):
+    def stream(self) -> Generator[bytes, None, None]:
         for line in self.res.raw:
             yield line
 ```

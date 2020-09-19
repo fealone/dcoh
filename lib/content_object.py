@@ -4,12 +4,10 @@ import requests
 
 
 class ContentObject(object):
-    need_request_payload = False
 
-    def __init__(self, res: requests.Response, request_headers: Dict[str, str], request_payload: bytes) -> None:
+    def __init__(self, res: requests.Response, request_headers: Dict[str, str]) -> None:
         self.res = res
         self.request_headers = request_headers
-        self.request_payload = request_payload
         self.buf = bytearray()
         self.pos = 0
         self.stream_reader = self.stream()
