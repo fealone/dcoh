@@ -1,6 +1,5 @@
 from typing import Any, Dict, Optional
 
-from lib.content_object import ContentObject
 import requests
 
 
@@ -27,7 +26,13 @@ class DelegateObject(object):
         self.protocol = protocol
 
     def get_request(self) -> requests.Request:
-        pass
-
-    def get_response(self, response: requests.Response) -> ContentObject:
-        pass
+        if self.request_payload:
+            req = requests.Request(self.headers["method"],
+                                   f"{self.protocol}://{self.target}{self.headers['url']}",
+                                   headers=self.headers["header"],
+                                   data=self.request_payload)
+        else:
+            req = requests.Request(self.headers["method"],
+                                   f"{self.protocol}://{self.target}{self.headers['url']}",
+                                   headers=self.headers["header"])
+        return req
