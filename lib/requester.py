@@ -1,10 +1,9 @@
 from importlib import machinery
-import io
 import logging
 import os
 import shutil
 import socket
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from lib import payload, recvline, rwsocket
 import requests
@@ -19,71 +18,68 @@ class Requester(object):
         self.session = requests.Session()
         self.secure = secure
 
+    def has_request_payload(self, header: Dict[str, str]) -> Tuple[bool, Optional[int]]:
+        if "content-length" in header and header["content-length"] != "0":
+            return True, int(header["content-length"])
+        if "transfer-encoding" in header and header["transfer-encoding"] == "chunked":
+            return True, None
+        return False, None
+
     def request(self, target: str, headers: Dict[str, Any], recvobj: recvline.Recvline) -> Tuple[Any, Any]:
         if self.secure:
             protocol = "https"
         else:
             protocol = "http"
         delegator = None
-        host = target.split(":")[0]
+        host, port = target.split(":")
+        if port in ["80", "443"]:
+            request_target = host
+        else:
+            request_target = target
         filename = headers['url'].split("?")[0].split("#")[0].split(".")[0]
+        has_payload, payload_size = self.has_request_payload(headers["header"])
         if os.path.exists(f"contents/{host}{filename}.py"):
             logger.info(f"Selected script with [contents/{host}{filename}.py]")
             loader = machinery.SourceFileLoader(filename, f"contents/{host}{filename}.py")
             module = loader.load_module(filename)
             delegator = module.Delegate()  # type: ignore
-            if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
-                size = int(headers["header"]["content-length"])
-                recvobj = payload.PayloadIterator(recvobj, size)
-                if delegator.need_request_payload:
-                    request_payload = b"".join(list(recvobj))
-                    recvobj = io.BytesIO(request_payload)
-                    delegator.set_request_payload(request_payload)
+            if has_payload:
+                request_payload = payload.PayloadIterator(recvobj, payload_size)
+                delegator.set_request_payload(request_payload)
             delegator.set_headers(headers)
             delegator.set_target(target)
             delegator.set_protocol(protocol)
             try:
                 req = delegator.get_request()
                 prepared = req.prepare()
-            except Exception:
-                if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
-                    req = requests.Request(headers["method"],
-                                           f"{protocol}://{target}{headers['url']}",
-                                           headers=headers["header"],
-                                           data=recvobj)
-                    prepared = req.prepare()
+                if "content-length" in prepared.headers:
                     if "Transfer-Encoding" in prepared.headers:
                         del prepared.headers["Transfer-Encoding"]
-                else:
-                    req = requests.Request(headers["method"],
-                                           f"{protocol}://{target}{headers['url']}",
-                                           headers=headers["header"])
-                    prepared = req.prepare()
-                    if "content-length" in prepared.headers:
-                        del prepared.headers["content-length"]
-            try:
                 res = self.session.send(prepared, stream=True, allow_redirects=False)
             except Exception:
-                logger.warning(f"Cannot connect to {target}")
+                logger.warning(f"Cannot connect to {target} because exception in custom script", exc_info=True)
                 return None, None
         else:
-            if "content-length" in headers["header"] and headers["header"]["content-length"] != "0":
+            if has_payload:
+                request_payload = payload.PayloadIterator(recvobj, payload_size)
                 req = requests.Request(headers["method"],
-                                       f"{protocol}://{target}{headers['url']}",
+                                       f"{protocol}://{request_target}{headers['url']}",
                                        headers=headers["header"],
-                                       data=recvobj)
+                                       data=request_payload)
                 prepared = req.prepare()
-                if "Transfer-Encoding" in prepared.headers:
-                    del prepared.headers["Transfer-Encoding"]
-                res = self.session.send(prepared, stream=True, allow_redirects=False)
             else:
                 req = requests.Request(headers["method"],
-                                       f"{protocol}://{target}{headers['url']}",
+                                       f"{protocol}://{request_target}{headers['url']}",
                                        headers=headers["header"])
                 prepared = req.prepare()
+            try:
                 if "content-length" in prepared.headers:
-                    del prepared.headers["content-length"]
+                    if "Transfer-Encoding" in prepared.headers:
+                        del prepared.headers["Transfer-Encoding"]
                 res = self.session.send(prepared, stream=True, allow_redirects=False)
+            except Exception:
+                logger.warning(f"Cannot connect to {request_target}")
+                return None, None
         return res, delegator
 
     def response(self,
@@ -181,7 +177,7 @@ class Requester(object):
         try:
             self.response(client, res, host, headers, delegator)
         except Exception:
-            logger.warning(f"Cannot response error. {target}")
+            logger.debug(f"Cannot response error. {target}")
             return False
         if res.headers.get("Connection") == "close":
             return False
