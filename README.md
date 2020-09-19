@@ -61,7 +61,7 @@ For example
 `dcoh/contents/www.google.com/index.html`
 
 #### How to use custom script
-Create the Python script you want to change response and request.
+Create the Python script you want to change response and request.  
 The path to deploy is to add extension ".py" to the contents path.  
 Also, different from the content is if a path has an end of a slash then, it doesn't add "index.html" to the end.  
 
