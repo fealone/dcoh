@@ -2,7 +2,7 @@
 
 ## What is this
 
-This software is to deceive the communication of HTTP(S).  
+This software use proxy to deceive the communication of HTTP(S).  
 The reason for making is to debug API and hack API to do.  
 
 ## Getting Started
