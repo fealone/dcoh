@@ -10,14 +10,6 @@ The reason for making is to debug API and hack API to do.
 This project was created to deceive the communication of HTTP(S).  
 To use this project so see "Installing" and "Usage" section.  
 
-### Prerequisites
-
-This software to use needs prepares, the environment for executing a Python.  
-Further, need to install bellow packages so written in requirements.txt.  
-
-* requests 
-    - `>= 2.20.1`
-
 ### Installing
 To usage so clone the repository and set up the CA root.  
 Enter the bellow command line to installing.  
@@ -46,7 +38,6 @@ If you need to change DN then change settings.py.
 To using try to enter the bellow command line.  
 
 ```bash
-cd dcoh
 python main.py
 ```
 
