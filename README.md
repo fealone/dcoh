@@ -10,6 +10,9 @@ The reason for making is to debug API and hack API to do.
 This project was created to deceive the communication of HTTP(S).  
 To use this project so see "Installing" and "Usage" section.  
 
+### Required (Confirmed)
+* OpenSSL 1.0.2 or 1.1.1
+
 ### Installing
 To usage so clone the repository and set up the CA root.  
 Enter the bellow command line to installing.  
